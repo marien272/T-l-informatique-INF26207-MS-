@@ -3,20 +3,25 @@ import hashlib
 
 HOST = "127.0.0.1"
 PORT = 12345
+NONCE_SIZE = 16
+HASH_SIZE = 32
 
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
     s.bind((HOST, PORT))
     print(f"Serveur UDP sur {HOST}:{PORT}")
     while True:
         data, addr = s.recvfrom(65535)
-        print(f"Reçu {len(data)} octets de {addr}")
+        print(f"Recu {len(data)} octets de {addr}")
 
-        message, hash_hex = data.split(b"\x00", 1)
-        calc = hashlib.sha256(message).hexdigest().encode("ascii")
+        body, hash_recu = data.rsplit(b"\x00", 1)
+        nonce  = body[:NONCE_SIZE]
+        message = body[NONCE_SIZE:]
 
-        if calc == hash_hex:
-            print("Hash valide ✓")
+        calc = hashlib.sha256(nonce + message).digest()
+
+        if calc == hash_recu:
+            print(f"Hash valide  | Message : {message.decode('utf-8', errors='replace')}")
             s.sendto(b"Message et hachage valides", addr)
         else:
-            print("Hash invalide ✗")
+            print("Hash invalide message corrompu ou modifie")
             s.sendto(b"Erreur de hachage", addr)
